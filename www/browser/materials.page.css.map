@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/materials/materials.page.scss"],
+  "sourcesContent": [".icon-avatar {\n  width: 100%;\n  height: 100%;\n  background: var(--ion-color-light);\n  border-radius: 50%;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  color: var(--ion-color-medium);\n  font-size: 22px;\n}\n\n.chip-small {\n  font-size: 10px;\n  height: 18px;\n  padding: 0 6px;\n  margin: 0 2px 0 0;\n}\n\nion-note {\n  font-size: 0.85rem;\n  font-weight: 600;\n\n  &.stock-low {\n    color: var(--ion-color-danger);\n  }\n}\n\n.empty-state {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 48px 24px;\n  text-align: center;\n\n  ion-icon {\n    font-size: 64px;\n    color: var(--ion-color-medium);\n    margin-bottom: 16px;\n  }\n\n  h3 { color: var(--ion-color-dark); }\n  p  { color: var(--ion-color-medium); }\n}\n"],
+  "mappings": ";AAAA,CAAA;AACE,SAAA;AACA,UAAA;AACA,cAAA,IAAA;AACA,iBAAA;AACA,WAAA;AACA,eAAA;AACA,mBAAA;AACA,SAAA,IAAA;AACA,aAAA;;AAGF,CAAA;AACE,aAAA;AACA,UAAA;AACA,WAAA,EAAA;AACA,UAAA,EAAA,IAAA,EAAA;;AAGF;AACE,aAAA;AACA,eAAA;;AAEA,QAAA,CAAA;AACE,SAAA,IAAA;;AAIJ,CAAA;AACE,WAAA;AACA,kBAAA;AACA,eAAA;AACA,mBAAA;AACA,WAAA,KAAA;AACA,cAAA;;AAEA,CARF,YAQE;AACE,aAAA;AACA,SAAA,IAAA;AACA,iBAAA;;AAGF,CAdF,YAcE;AAAK,SAAA,IAAA;;AACL,CAfF,YAeE;AAAK,SAAA,IAAA;;",
+  "names": []
+}

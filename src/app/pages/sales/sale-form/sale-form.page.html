@@ -1,0 +1,124 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/sales"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Registrar venta</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <!-- ─── Producto ───────────────────────────────────────── -->
+  <ion-card>
+    <ion-card-content>
+      <ion-item lines="full">
+        <ion-label position="stacked">Producto *</ion-label>
+        <ion-select
+          [(ngModel)]="selectedProductId"
+          (ngModelChange)="onProductSelected()"
+          placeholder="¿Qué se vendió?"
+          interface="action-sheet"
+        >
+          <ion-select-option *ngFor="let p of products" [value]="p.id">
+            {{ p.name }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <!-- Lote (si hay stock disponible) -->
+      <ion-item lines="full" *ngIf="availableLots.length > 0">
+        <ion-label position="stacked">Lote de producción</ion-label>
+        <ion-select
+          [(ngModel)]="selectedLotId"
+          (ngModelChange)="onLotSelected()"
+          interface="action-sheet"
+        >
+          <ion-select-option *ngFor="let lot of availableLots" [value]="lot.id">
+            #{{ lot.id }} — {{ lot.remainingUnits }} disponibles
+            ({{ lot.sellingPrice | gtq }}/u.)
+          </ion-select-option>
+        </ion-select>
+        <ion-note slot="helper">
+          Selecciona el lote para llevar control de inventario
+        </ion-note>
+      </ion-item>
+
+      <!-- Info del lote seleccionado -->
+      <div *ngIf="selectedLot" class="lot-info">
+        <ion-chip color="success">
+          <ion-icon name="layers-outline"></ion-icon>
+          {{ selectedLot.remainingUnits }} unidades disponibles
+        </ion-chip>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── Cantidad y precio ──────────────────────────────── -->
+  <ion-card>
+    <ion-card-content>
+      <ion-item lines="full">
+        <ion-label position="stacked">Cantidad vendida *</ion-label>
+        <ion-input
+          [(ngModel)]="quantity"
+          type="number"
+          inputmode="numeric"
+          placeholder="1"
+          min="1"
+          step="1"
+          [autofocus]="!!selectedProductId"
+        ></ion-input>
+      </ion-item>
+
+      <ion-item lines="none">
+        <ion-label position="stacked">Precio por unidad (Q) *</ion-label>
+        <ion-input
+          [(ngModel)]="unitPrice"
+          type="number"
+          inputmode="decimal"
+          placeholder="0.00"
+          min="0"
+          step="0.01"
+        ></ion-input>
+      </ion-item>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── Total calculado ────────────────────────────────── -->
+  <ion-card *ngIf="quantity && unitPrice" class="total-card">
+    <ion-card-content>
+      <div class="total-row">
+        <span>{{ quantity }} × {{ unitPrice | gtq }}</span>
+        <strong class="total-amount">= {{ totalAmount | gtq }}</strong>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── Notas ──────────────────────────────────────────── -->
+  <ion-card>
+    <ion-card-content>
+      <ion-item lines="none">
+        <ion-label position="stacked">Notas (opcional)</ion-label>
+        <ion-textarea
+          [(ngModel)]="notes"
+          placeholder="Ej. Venta a cliente frecuente..."
+          rows="2"
+          autoGrow
+        ></ion-textarea>
+      </ion-item>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── Botón confirmar ────────────────────────────────── -->
+  <ion-button
+    expand="block"
+    color="success"
+    (click)="save()"
+    [disabled]="saving || !selectedProductId || !quantity || !unitPrice"
+    class="save-btn"
+  >
+    <ion-icon slot="start" name="checkmark-outline"></ion-icon>
+    Registrar venta — {{ totalAmount | gtq }}
+  </ion-button>
+
+</ion-content>

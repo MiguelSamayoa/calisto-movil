@@ -1,0 +1,115 @@
+ion-card {
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+
+// ─── Estado calculando ─────────────────────────────────────────────────────────
+.calculating-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  padding: 24px;
+  color: var(--ion-color-medium);
+}
+
+.error-card {
+  ion-card-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    ion-icon { font-size: 20px; }
+  }
+}
+
+// ─── Tarjeta de costos ─────────────────────────────────────────────────────────
+.cost-card {
+  background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+  color: white;
+
+  .cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+    strong { color: white; }
+
+    &.divider {
+      border-top: 1px solid rgba(255,255,255,0.2);
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+
+    &.highlight strong { color: #69f0ae; }
+  }
+
+  .cost-per-unit {
+    font-size: 1.25rem;
+  }
+}
+
+// ─── Margen ────────────────────────────────────────────────────────────────────
+.margin-display {
+  text-align: center;
+  margin-bottom: 8px;
+
+  .margin-value {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--ion-color-primary);
+  }
+
+  .margin-label {
+    font-size: 0.75rem;
+    color: var(--ion-color-medium);
+  }
+}
+
+.suggested-price-box {
+  background: var(--ion-color-light);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  margin: 12px 0;
+
+  .suggested-label { font-size: 0.75rem; color: var(--ion-color-medium); }
+  .suggested-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ion-color-success);
+  }
+  .suggested-sublabel { font-size: 0.7rem; color: var(--ion-color-medium); }
+}
+
+// ─── Resumen precio ────────────────────────────────────────────────────────────
+.price-summary {
+  border-top: 1px solid var(--ion-color-light);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.9rem;
+}
+
+.price-final       { font-size: 1.1rem; color: var(--ion-color-primary); }
+.price-total-profit { font-size: 1.1rem; color: var(--ion-color-success); }
+
+.margin-good { color: #388e3c; }
+.margin-ok   { color: #f57c00; }
+.margin-bad  { color: #d32f2f; }
+
+.warning-card ul { margin: 8px 0 0; padding-left: 16px; }
+
+.confirm-btn {
+  margin-top: 16px;
+  height: 52px;
+  font-size: 1rem;
+}

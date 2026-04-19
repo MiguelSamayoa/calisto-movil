@@ -1,0 +1,167 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>
+      <ion-icon name="storefront-outline"></ion-icon>
+      Calisto
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <!-- ─── HOY ──────────────────────────────────────────────── -->
+  <h2 class="section-title">Hoy</h2>
+
+  <ion-grid *ngIf="stats">
+    <ion-row>
+      <ion-col size="6">
+        <ion-card class="stat-card stat-card--green">
+          <ion-card-content>
+            <div class="stat-value">{{ stats.todayRevenue | gtq }}</div>
+            <div class="stat-label">Ingresos</div>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="6">
+        <ion-card class="stat-card stat-card--blue">
+          <ion-card-content>
+            <div class="stat-value">{{ stats.todaySales }}</div>
+            <div class="stat-label">Ventas</div>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="6">
+        <ion-card class="stat-card stat-card--orange">
+          <ion-card-content>
+            <div class="stat-value">{{ stats.todayCost | gtq }}</div>
+            <div class="stat-label">Costo</div>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="6">
+        <ion-card
+          class="stat-card"
+          [class.stat-card--green]="stats.todayProfit >= 0"
+          [class.stat-card--red]="stats.todayProfit < 0"
+        >
+          <ion-card-content>
+            <div class="stat-value">{{ stats.todayProfit | gtq }}</div>
+            <div class="stat-label">Ganancia</div>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <!-- ─── ESTE MES ────────────────────────────────────────── -->
+  <h2 class="section-title">Este mes</h2>
+
+  <ion-card *ngIf="stats" class="month-card">
+    <ion-card-content>
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <div class="month-stat">
+              <div class="month-value">{{ stats.monthRevenue | gtq }}</div>
+              <div class="month-label">Ingresos</div>
+            </div>
+          </ion-col>
+          <ion-col>
+            <div class="month-stat">
+              <div class="month-value">{{ stats.monthCost | gtq }}</div>
+              <div class="month-label">Costos</div>
+            </div>
+          </ion-col>
+          <ion-col>
+            <div class="month-stat">
+              <div
+                class="month-value"
+                [class.profit-positive]="stats.monthProfit >= 0"
+                [class.profit-negative]="stats.monthProfit < 0"
+              >
+                {{ stats.monthProfitMargin | number:'1.1-1' }}%
+              </div>
+              <div class="month-label">Margen</div>
+            </div>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── TOP PRODUCTOS ────────────────────────────────────── -->
+  <h2 class="section-title">Top productos (30 días)</h2>
+
+  <ion-card *ngIf="stats && stats.topProducts.length > 0">
+    <ion-list lines="none">
+      <ion-item *ngFor="let p of stats.topProducts; let i = index">
+        <ion-chip slot="start" color="primary">{{ i + 1 }}</ion-chip>
+        <ion-label>
+          <h3>{{ p.productName }}</h3>
+          <p>{{ p.totalSold }} unidades · {{ p.totalRevenue | gtq }}</p>
+        </ion-label>
+      </ion-item>
+    </ion-list>
+  </ion-card>
+
+  <ion-card *ngIf="stats && stats.topProducts.length === 0">
+    <ion-card-content class="empty-state">
+      <ion-icon name="storefront-outline"></ion-icon>
+      <p>Sin ventas en los últimos 30 días</p>
+      <ion-button fill="outline" routerLink="/sales/new">
+        Registrar primera venta
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── ALERTAS DE STOCK BAJO ────────────────────────────── -->
+  <div *ngIf="stats && stats.lowStockMaterials.length > 0">
+    <h2 class="section-title">
+      <ion-icon name="alert-circle-outline" color="warning"></ion-icon>
+      Stock bajo
+    </h2>
+
+    <ion-card color="warning" class="alert-card">
+      <ion-list lines="full">
+        <ion-item *ngFor="let m of stats.lowStockMaterials" color="warning">
+          <ion-icon name="alert-circle-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>{{ m.materialName }}</h3>
+            <p>Disponible: {{ m.currentStock }} {{ m.unit }}</p>
+          </ion-label>
+          <ion-button slot="end" fill="clear" routerLink="/tabs/materials">
+            Ver
+          </ion-button>
+        </ion-item>
+      </ion-list>
+    </ion-card>
+  </div>
+
+  <!-- ─── ACCIONES RÁPIDAS ─────────────────────────────────── -->
+  <h2 class="section-title">Acceso rápido</h2>
+
+  <ion-grid>
+    <ion-row>
+      <ion-col size="6">
+        <ion-button expand="block" fill="outline" routerLink="/sales/new">
+          <ion-icon slot="start" name="cash-outline"></ion-icon>
+          Nueva venta
+        </ion-button>
+      </ion-col>
+      <ion-col size="6">
+        <ion-button expand="block" fill="outline" routerLink="/lots/new">
+          <ion-icon slot="start" name="layers-outline"></ion-icon>
+          Nuevo lote
+        </ion-button>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+</ion-content>

@@ -1,0 +1,118 @@
+import { Injectable } from '@angular/core';
+import {
+  CapacitorSQLite,
+  SQLiteConnection,
+  SQLiteDBConnection,
+} from '@capacitor-community/sqlite';
+import { V1_MIGRATION } from './migrations/v1.migration';
+import { V2_MIGRATION } from './migrations/v2.migration';
+
+const DB_NAME = 'calisto_db';
+const DB_VERSION = 2;
+
+@Injectable({ providedIn: 'root' })
+export class DatabaseService {
+  private sqlite: SQLiteConnection = new SQLiteConnection(CapacitorSQLite);
+  private db!: SQLiteDBConnection;
+  private initialized = false;
+
+  // ─── Bootstrap ────────────────────────────────────────────────────────────
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    await this.ensureConnection();
+    await this.configurePragmas();  // PRAGMAs primero (antes de migraciones)
+    await this.runMigrations();
+
+    this.initialized = true;
+  }
+
+  private async ensureConnection(): Promise<void> {
+    const ret = await this.sqlite.checkConnectionsConsistency();
+    const isConn = (await this.sqlite.isConnection(DB_NAME, false)).result;
+
+    if (ret.result && isConn) {
+      this.db = await this.sqlite.retrieveConnection(DB_NAME, false);
+    } else {
+      this.db = await this.sqlite.createConnection(
+        DB_NAME,
+        false,
+        'no-encryption',
+        DB_VERSION,
+        false
+      );
+    }
+
+    await this.db.open();
+  }
+
+  private async configurePragmas(): Promise<void> {
+    // Los PRAGMAs retornan filas de resultado, por eso usamos query()
+    // en vez de run() (que lanza SQLITE_ROW error 100) o execute()
+    // (que envuelve en transacción, incompatible con journal_mode).
+    await this.db.query('PRAGMA journal_mode = WAL;');
+    await this.db.query('PRAGMA foreign_keys = ON;');
+    await this.db.query('PRAGMA synchronous = NORMAL;');
+    await this.db.query('PRAGMA cache_size = 10000;');
+  }
+
+  private async runMigrations(): Promise<void> {
+    const result = await this.db.query('PRAGMA user_version;');
+    const currentVersion: number = result.values?.[0]?.user_version ?? 0;
+
+    if (currentVersion < V1_MIGRATION.version) {
+      for (const stmt of V1_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V1_MIGRATION.version};`);
+    }
+
+    if (currentVersion < V2_MIGRATION.version) {
+      for (const stmt of V2_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V2_MIGRATION.version};`);
+    }
+  }
+
+  // ─── Acceso a la conexión ─────────────────────────────────────────────────
+
+  getDb(): SQLiteDBConnection {
+    if (!this.db) throw new Error('DatabaseService no inicializado. Llama initialize() primero.');
+    return this.db;
+  }
+
+  // ─── Helpers de query ─────────────────────────────────────────────────────
+
+  async query<T = Record<string, unknown>>(
+    sql: string,
+    params: (string | number | null)[] = []
+  ): Promise<T[]> {
+    const result = await this.db.query(sql, params);
+    return (result.values ?? []) as T[];
+  }
+
+  async execute(
+    sql: string,
+    params: (string | number | null)[] = []
+  ): Promise<{ lastId: number; changes: number }> {
+    const result = await this.db.run(sql, params);
+    return {
+      lastId: result.changes?.lastId ?? 0,
+      changes: result.changes?.changes ?? 0,
+    };
+  }
+
+  async transaction<T>(fn: () => Promise<T>): Promise<T> {
+    await this.db.execute('BEGIN TRANSACTION;');
+    try {
+      const result = await fn();
+      await this.db.execute('COMMIT;');
+      return result;
+    } catch (error) {
+      await this.db.execute('ROLLBACK;');
+      throw error;
+    }
+  }
+}

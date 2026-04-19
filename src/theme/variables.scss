@@ -1,0 +1,76 @@
+// Calisto — Tema principal
+// Paleta: azul marino oscuro + verde esmeralda
+
+:root {
+  /** primary — Azul marino */
+  --ion-color-primary: #1a237e;
+  --ion-color-primary-rgb: 26, 35, 126;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #171f6f;
+  --ion-color-primary-tint: #31398b;
+
+  /** secondary — Verde esmeralda */
+  --ion-color-secondary: #00897b;
+  --ion-color-secondary-rgb: 0, 137, 123;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #00796b;
+  --ion-color-secondary-tint: #1a9588;
+
+  /** tertiary */
+  --ion-color-tertiary: #7c4dff;
+  --ion-color-tertiary-rgb: 124, 77, 255;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-shade: #6d43e0;
+  --ion-color-tertiary-tint: #895fff;
+
+  /** success */
+  --ion-color-success: #2e7d32;
+  --ion-color-success-rgb: 46, 125, 50;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-shade: #27692b;
+  --ion-color-success-tint: #438a47;
+
+  /** warning */
+  --ion-color-warning: #f57f17;
+  --ion-color-warning-rgb: 245, 127, 23;
+  --ion-color-warning-contrast: #ffffff;
+  --ion-color-warning-shade: #d86f14;
+  --ion-color-warning-tint: #f68c2e;
+
+  /** danger */
+  --ion-color-danger: #c62828;
+  --ion-color-danger-rgb: 198, 40, 40;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-shade: #ae2323;
+  --ion-color-danger-tint: #cc3e3e;
+
+  /** dark */
+  --ion-color-dark: #212121;
+  --ion-color-dark-rgb: 33, 33, 33;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-shade: #1d1d1d;
+  --ion-color-dark-tint: #373737;
+
+  /** medium */
+  --ion-color-medium: #757575;
+  --ion-color-medium-rgb: 117, 117, 117;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-shade: #676767;
+  --ion-color-medium-tint: #838383;
+
+  /** light */
+  --ion-color-light: #f5f5f5;
+  --ion-color-light-rgb: 245, 245, 245;
+  --ion-color-light-contrast: #000000;
+  --ion-color-light-shade: #d8d8d8;
+  --ion-color-light-tint: #f6f6f6;
+
+  // Fuente del sistema
+  --ion-font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  // Background de contenido
+  --ion-background-color: #fafafa;
+  --ion-background-color-rgb: 250, 250, 250;
+}

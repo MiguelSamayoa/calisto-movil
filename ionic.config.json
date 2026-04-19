@@ -1,0 +1,7 @@
+{
+  "name": "calisto-movil",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}

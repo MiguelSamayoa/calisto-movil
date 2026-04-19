@@ -1,0 +1,27 @@
+ion-card { border-radius: 16px; margin-bottom: 12px; }
+
+.lot-info {
+  padding: 8px 0;
+}
+
+.total-card {
+  background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: rgba(255,255,255,0.8);
+  }
+
+  .total-amount {
+    color: #b9f6ca;
+    font-size: 1.5rem;
+  }
+}
+
+.save-btn {
+  margin: 8px 0 32px;
+  height: 52px;
+  font-size: 1rem;
+}

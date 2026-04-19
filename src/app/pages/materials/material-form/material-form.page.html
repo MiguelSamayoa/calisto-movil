@@ -1,0 +1,108 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/materials"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ isEdit ? 'Editar insumo' : 'Nuevo insumo' }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="save()" [disabled]="loading" strong>
+        <ion-icon slot="start" name="save-outline"></ion-icon>
+        Guardar
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <!-- Foto del insumo -->
+  <ion-card>
+    <ion-card-content class="photo-section">
+      <app-photo-picker
+        [photoPath]="photoPath"
+        entityType="material"
+        [entityId]="materialId"
+        (photoChanged)="onPhotoChanged($event)"
+      ></app-photo-picker>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Datos principales -->
+  <ion-card>
+    <ion-card-content>
+      <!-- Nombre — autofocus para entrada rápida -->
+      <ion-item lines="full">
+        <ion-label position="stacked">Nombre *</ion-label>
+        <ion-input
+          [(ngModel)]="name"
+          placeholder="Ej. Harina de trigo"
+          [autofocus]="!isEdit"
+          autocapitalize="words"
+          inputmode="text"
+          clearInput
+        ></ion-input>
+      </ion-item>
+
+      <!-- Descripción (opcional) -->
+      <ion-item lines="full">
+        <ion-label position="stacked">Descripción</ion-label>
+        <ion-textarea
+          [(ngModel)]="description"
+          placeholder="Opcional"
+          rows="2"
+          autoGrow
+        ></ion-textarea>
+      </ion-item>
+
+      <!-- Unidad de medida -->
+      <ion-item lines="full">
+        <ion-label position="stacked">Unidad de medida *</ion-label>
+        <ion-select [(ngModel)]="unit" placeholder="Seleccionar" interface="action-sheet">
+          <ion-select-option *ngFor="let u of units" [value]="u.value">
+            {{ u.label }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <!-- Costo unitario — teclado numérico -->
+      <ion-item lines="full">
+        <ion-label position="stacked">Costo por {{ unit }} (Q) *</ion-label>
+        <ion-input
+          [(ngModel)]="unitCost"
+          type="number"
+          inputmode="decimal"
+          placeholder="0.00"
+          min="0"
+          step="0.01"
+        ></ion-input>
+        <ion-note slot="helper">Quetzales guatemaltecos</ion-note>
+      </ion-item>
+
+      <!-- Stock actual -->
+      <ion-item lines="none">
+        <ion-label position="stacked">Stock actual ({{ unit }})</ion-label>
+        <ion-input
+          [(ngModel)]="stock"
+          type="number"
+          inputmode="decimal"
+          placeholder="0"
+          min="0"
+          step="0.01"
+        ></ion-input>
+        <ion-note slot="helper">Cantidad disponible actualmente</ion-note>
+      </ion-item>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Botón guardar al fondo (accesibilidad en pantallas pequeñas) -->
+  <ion-button
+    expand="block"
+    (click)="save()"
+    [disabled]="loading"
+    class="save-btn"
+  >
+    <ion-icon slot="start" name="save-outline"></ion-icon>
+    {{ isEdit ? 'Actualizar insumo' : 'Guardar insumo' }}
+  </ion-button>
+
+</ion-content>

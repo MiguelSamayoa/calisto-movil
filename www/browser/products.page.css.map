@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["products.page.ts"],
+  "sourcesContent": [".icon-av{width:100%;height:100%;background:var(--ion-color-light);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ion-color-medium);font-size:22px}"],
+  "mappings": ";AAAA,CAAA;AAAS,SAAA;AAAW,UAAA;AAAY,cAAA,IAAA;AAAkC,iBAAA;AAAkB,WAAA;AAAa,eAAA;AAAmB,mBAAA;AAAuB,SAAA,IAAA;AAA8B,aAAA;;",
+  "names": []
+}

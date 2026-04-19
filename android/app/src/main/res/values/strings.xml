@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Calisto</string>
+    <string name="title_activity_main">Calisto</string>
+    <string name="package_name">com.calisto.reposteria</string>
+    <string name="custom_url_scheme">com.calisto.reposteria</string>
+</resources>

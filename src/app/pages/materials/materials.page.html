@@ -1,0 +1,92 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Insumos</ion-title>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar
+      placeholder="Buscar insumo..."
+      debounce="200"
+      (ionInput)="onSearch($event)"
+    ></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <!-- Skeleton loading -->
+  <ion-list *ngIf="loading">
+    <ion-item *ngFor="let _ of [1,2,3,4,5]">
+      <ion-avatar slot="start">
+        <ion-skeleton-text animated></ion-skeleton-text>
+      </ion-avatar>
+      <ion-label>
+        <h3><ion-skeleton-text animated style="width: 60%"></ion-skeleton-text></h3>
+        <p><ion-skeleton-text animated style="width: 40%"></ion-skeleton-text></p>
+      </ion-label>
+    </ion-item>
+  </ion-list>
+
+  <!-- Lista de materiales -->
+  <ion-list *ngIf="!loading && filtered.length > 0" lines="full">
+    <ion-item-sliding *ngFor="let m of filtered">
+      <ion-item [routerLink]="['/materials', m.id, 'edit']">
+        <ion-avatar slot="start">
+          <img
+            *ngIf="getPhotoUrl(m) as url; else iconAvatar"
+            [src]="url"
+            alt="foto"
+          />
+          <ng-template #iconAvatar>
+            <div class="icon-avatar">
+              <ion-icon name="cube-outline"></ion-icon>
+            </div>
+          </ng-template>
+        </ion-avatar>
+
+        <ion-label>
+          <h3>{{ m.name }}</h3>
+          <p>
+            <ion-chip color="primary" class="chip-small">{{ m.unit }}</ion-chip>
+            {{ m.unitCost | gtq }}/{{ m.unit }}
+          </p>
+        </ion-label>
+
+        <ion-note slot="end" [class.stock-low]="m.stock <= 1">
+          {{ m.stock }} {{ m.unit }}
+        </ion-note>
+      </ion-item>
+
+      <!-- Swipe actions -->
+      <ion-item-options side="end">
+        <ion-item-option color="primary" [routerLink]="['/materials', m.id, 'edit']">
+          <ion-icon slot="icon-only" name="create-outline"></ion-icon>
+        </ion-item-option>
+        <ion-item-option color="danger" (click)="confirmDelete(m)">
+          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+        </ion-item-option>
+      </ion-item-options>
+    </ion-item-sliding>
+  </ion-list>
+
+  <!-- Estado vacío -->
+  <div *ngIf="!loading && filtered.length === 0" class="empty-state">
+    <ion-icon name="cube-outline"></ion-icon>
+    <h3>Sin insumos</h3>
+    <p>Agrega tus primeros ingredientes para comenzar a calcular costos.</p>
+    <ion-button routerLink="/materials/new">
+      <ion-icon slot="start" name="add-outline"></ion-icon>
+      Agregar insumo
+    </ion-button>
+  </div>
+
+  <!-- FAB: nuevo material -->
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+    <ion-fab-button routerLink="/materials/new" color="primary">
+      <ion-icon name="add-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+</ion-content>

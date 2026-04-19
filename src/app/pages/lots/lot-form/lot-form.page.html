@@ -1,0 +1,247 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/lots"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Nuevo lote de producción</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <!-- ─── Paso 1: Selección de producto y cantidad ──────── -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>1. ¿Qué vas a producir?</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-item lines="full">
+        <ion-label position="stacked">Producto *</ion-label>
+        <ion-select
+          [(ngModel)]="selectedProductId"
+          (ngModelChange)="onInputChange()"
+          placeholder="Seleccionar producto"
+          interface="action-sheet"
+        >
+          <ion-select-option *ngFor="let p of products" [value]="p.id">
+            {{ p.name }} (rinde {{ p.yieldUnits }} u.)
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <ion-item lines="none">
+        <ion-label position="stacked">Unidades a producir *</ion-label>
+        <ion-input
+          [(ngModel)]="quantity"
+          (ngModelChange)="onInputChange()"
+          type="number"
+          inputmode="numeric"
+          placeholder="Ej. 24"
+          min="1"
+          step="1"
+        ></ion-input>
+        <ion-note slot="helper">
+          Número total de unidades finales
+        </ion-note>
+      </ion-item>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── Spinner de cálculo ─────────────────────────────── -->
+  <div *ngIf="calculating" class="calculating-state">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <span>Calculando costos...</span>
+  </div>
+
+  <!-- ─── Error de cálculo ───────────────────────────────── -->
+  <ion-card *ngIf="calcError" color="danger" class="error-card">
+    <ion-card-content>
+      <ion-icon name="alert-circle-outline"></ion-icon>
+      {{ calcError }}
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── Resultado del cálculo ─────────────────────────── -->
+  <ng-container *ngIf="calculation">
+
+    <!-- Alertas de stock -->
+    <ion-card *ngIf="hasStockWarnings" color="warning" class="warning-card">
+      <ion-card-content>
+        <strong>Advertencia de stock:</strong>
+        <ul>
+          <li *ngFor="let w of calculation.stockWarnings">
+            {{ w.materialName }}: necesitas {{ w.needed | number:'1.2-2' }}
+            {{ ' ' }}pero tienes {{ w.available | number:'1.2-2' }}
+            (déficit: {{ w.deficit | number:'1.2-2' }})
+          </li>
+        </ul>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Resumen de costos -->
+    <ion-card class="cost-card">
+      <ion-card-content>
+        <div class="cost-row">
+          <span>Producto</span>
+          <strong>{{ calculation.productName }}</strong>
+        </div>
+        <div class="cost-row">
+          <span>Unidades a producir</span>
+          <strong>{{ calculation.totalUnits }}</strong>
+        </div>
+        <div class="cost-row">
+          <span>Lotes de receta</span>
+          <strong>× {{ calculation.batchMultiplier }}</strong>
+        </div>
+        <div class="cost-row divider">
+          <span>Costo total materiales</span>
+          <strong>{{ calculation.totalMaterialsCost | gtq }}</strong>
+        </div>
+        <div class="cost-row highlight">
+          <span>Costo por unidad</span>
+          <strong class="cost-per-unit">{{ calculation.costPerUnit | gtq }}</strong>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Paso 2: Margen y precio -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>2. Margen de ganancia</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="margin-display">
+          <span class="margin-value">{{ marginPct }}%</span>
+          <span class="margin-label">margen sobre precio de venta</span>
+        </div>
+
+        <ion-range
+          [(ngModel)]="marginPct"
+          (ngModelChange)="onInputChange()"
+          min="0"
+          max="80"
+          step="5"
+          snaps="true"
+          ticks="true"
+          color="primary"
+        >
+          <ion-label slot="start">0%</ion-label>
+          <ion-label slot="end">80%</ion-label>
+        </ion-range>
+
+        <!-- Precio sugerido -->
+        <div class="suggested-price-box">
+          <div class="suggested-label">Precio sugerido de venta</div>
+          <div class="suggested-value">{{ calculation.suggestedPrice | gtq }}</div>
+          <div class="suggested-sublabel">por unidad</div>
+        </div>
+
+        <!-- Toggle precio personalizado -->
+        <ion-item lines="none" class="custom-price-toggle">
+          <ion-label>Usar precio personalizado</ion-label>
+          <ion-button
+            slot="end"
+            fill="outline"
+            size="small"
+            (click)="useCustomPrice = !useCustomPrice"
+          >
+            {{ useCustomPrice ? 'Cancelar' : 'Cambiar' }}
+          </ion-button>
+        </ion-item>
+
+        <ion-item *ngIf="useCustomPrice" lines="none">
+          <ion-label position="stacked">
+            Precio de venta personalizado (Q)
+          </ion-label>
+          <ion-input
+            [(ngModel)]="customSellingPrice"
+            type="number"
+            inputmode="decimal"
+            placeholder="{{ calculation.suggestedPrice | number:'1.2-2' }}"
+            min="0"
+            step="0.01"
+          ></ion-input>
+        </ion-item>
+
+        <!-- Resumen de precio final -->
+        <div class="price-summary">
+          <div class="price-row">
+            <span>Precio de venta final:</span>
+            <strong class="price-final">{{ finalSellingPrice | gtq }}</strong>
+          </div>
+          <div class="price-row">
+            <span>Margen real:</span>
+            <strong
+              [class.margin-good]="actualMargin >= 30"
+              [class.margin-ok]="actualMargin >= 15 && actualMargin < 30"
+              [class.margin-bad]="actualMargin < 15"
+            >{{ actualMargin | number:'1.1-1' }}%</strong>
+          </div>
+          <div class="price-row">
+            <span>Ganancia por unidad:</span>
+            <strong>{{ (finalSellingPrice - calculation.costPerUnit) | gtq }}</strong>
+          </div>
+          <div class="price-row">
+            <span>Ganancia total del lote:</span>
+            <strong class="price-total-profit">
+              {{ (finalSellingPrice - calculation.costPerUnit) * calculation.totalUnits | gtq }}
+            </strong>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Desglose de costos (acordeón) -->
+    <ion-accordion-group>
+      <ion-accordion value="breakdown">
+        <ion-item slot="header" color="light">
+          <ion-icon slot="start" name="information-circle-outline"></ion-icon>
+          <ion-label>Ver desglose de materiales</ion-label>
+        </ion-item>
+        <ion-list slot="content" lines="full">
+          <ion-item *ngFor="let b of calculation.breakdown">
+            <ion-label>
+              <h3>{{ b.materialName }}</h3>
+              <p>
+                {{ b.quantityNeeded | number:'1.3-3' }} {{ b.unit }}
+                × {{ b.unitCost | gtq }}
+              </p>
+            </ion-label>
+            <ion-note slot="end">{{ b.subtotal | gtq }}</ion-note>
+          </ion-item>
+        </ion-list>
+      </ion-accordion>
+    </ion-accordion-group>
+
+    <!-- Paso 3: Notas y confirmar -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>3. Confirmar lote</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item lines="none">
+          <ion-label position="stacked">Notas (opcional)</ion-label>
+          <ion-textarea
+            [(ngModel)]="notes"
+            placeholder="Ej. Lote para evento del sábado..."
+            rows="2"
+            autoGrow
+          ></ion-textarea>
+        </ion-item>
+
+        <ion-button
+          expand="block"
+          (click)="confirmLot()"
+          [disabled]="saving || !calculation"
+          class="confirm-btn"
+          color="success"
+        >
+          <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+          Crear lote — {{ calculation.totalUnits }} unidades
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+
+  </ng-container>
+
+</ion-content>

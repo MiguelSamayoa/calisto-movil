@@ -1,0 +1,56 @@
+.cost-summary {
+  background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+  color: white;
+  border-radius: 16px;
+
+  .cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    color: rgba(255,255,255,0.85);
+    font-size: 0.9rem;
+
+    strong { color: white; }
+
+    &.highlight {
+      border-top: 1px solid rgba(255,255,255,0.2);
+      margin-top: 8px;
+      padding-top: 12px;
+    }
+  }
+
+  .cost-value     { color: #a5d6a7; }
+  .cost-value-big { color: #69f0ae; font-size: 1.2rem; }
+}
+
+.add-btn {
+  margin-top: 12px;
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 16px 0 4px;
+  color: var(--ion-color-dark);
+}
+
+.empty-recipe {
+  ion-card-content {
+    text-align: center;
+    padding: 24px;
+
+    ion-icon {
+      font-size: 48px;
+      color: var(--ion-color-medium);
+      display: block;
+      margin: 0 auto 8px;
+    }
+  }
+}
+
+.qty-input {
+  max-width: 80px;
+  text-align: right;
+  --padding-end: 0;
+}

@@ -1,0 +1,199 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/products"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Receta: {{ product?.name }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="save()" [disabled]="saving" strong>
+        <ion-icon slot="start" name="save-outline"></ion-icon>
+        Guardar
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <!-- ─── Resumen de costos ──────────────────────────────── -->
+  <ion-card class="cost-summary" *ngIf="product">
+    <ion-card-content>
+      <div class="cost-row">
+        <span>Rendimiento por receta:</span>
+        <strong>{{ product.yieldUnits }} unidades</strong>
+      </div>
+      <div class="cost-row">
+        <span>Costo total por receta:</span>
+        <strong class="cost-value">{{ totalCostPerBatch | gtq }}</strong>
+      </div>
+      <div class="cost-row highlight">
+        <span>Costo por unidad:</span>
+        <strong class="cost-value-big">{{ costPerUnit | gtq }}</strong>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── Selector de tipo de ingrediente ──────────────── -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Agregar ingrediente</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+
+      <ion-segment [(ngModel)]="newIngredientType" class="ion-margin-bottom">
+        <ion-segment-button value="material">
+          <ion-icon name="cube-outline"></ion-icon>
+          <ion-label>Insumo</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="subproduct">
+          <ion-icon name="bag-outline"></ion-icon>
+          <ion-label>Subproducto</ion-label>
+        </ion-segment-button>
+      </ion-segment>
+
+      <!-- Formulario: Insumo -->
+      <ng-container *ngIf="newIngredientType === 'material'">
+        <ion-item lines="full">
+          <ion-label position="stacked">Material</ion-label>
+          <ion-select
+            [(ngModel)]="newMaterialId"
+            placeholder="Seleccionar material"
+            interface="action-sheet"
+          >
+            <ion-select-option *ngFor="let m of availableMaterials" [value]="m.id">
+              {{ m.name }} ({{ m.unit }}) — {{ m.unitCost | gtq }}/{{ m.unit }}
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item lines="none">
+          <ion-label position="stacked">Cantidad ({{ selectedMaterialUnit }})</ion-label>
+          <ion-input
+            [(ngModel)]="newMaterialQty"
+            type="number"
+            inputmode="decimal"
+            placeholder="0.00"
+            min="0.001"
+            step="0.01"
+          ></ion-input>
+        </ion-item>
+
+        <ion-button
+          expand="block"
+          fill="outline"
+          (click)="addMaterial()"
+          class="add-btn"
+          [disabled]="!newMaterialId || !newMaterialQty"
+        >
+          <ion-icon slot="start" name="add-outline"></ion-icon>
+          Agregar insumo
+        </ion-button>
+      </ng-container>
+
+      <!-- Formulario: Subproducto -->
+      <ng-container *ngIf="newIngredientType === 'subproduct'">
+        <ion-item lines="full">
+          <ion-label position="stacked">Subproducto</ion-label>
+          <ion-select
+            [(ngModel)]="newSubProductId"
+            placeholder="Seleccionar subproducto"
+            interface="action-sheet"
+            (ionChange)="onSubProductChange()"
+          >
+            <ion-select-option *ngFor="let p of availableSubProducts" [value]="p.id">
+              {{ p.name }} ({{ p.category }})
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item lines="full" *ngIf="newSubProductId && newSubProductUnitCost > 0">
+          <ion-label>
+            <p>Costo por unidad del subproducto:</p>
+            <strong>{{ newSubProductUnitCost | gtq }}</strong>
+          </ion-label>
+        </ion-item>
+
+        <ion-item lines="full" *ngIf="newSubProductId && newSubProductUnitCost === 0">
+          <ion-note color="warning">
+            Este subproducto no tiene receta definida aún — su costo será Q0.00
+          </ion-note>
+        </ion-item>
+
+        <ion-item lines="none">
+          <ion-label position="stacked">Cantidad (unidades)</ion-label>
+          <ion-input
+            [(ngModel)]="newSubProductQty"
+            type="number"
+            inputmode="decimal"
+            placeholder="0.00"
+            min="0.001"
+            step="0.01"
+          ></ion-input>
+        </ion-item>
+
+        <ion-button
+          expand="block"
+          fill="outline"
+          (click)="addSubProduct()"
+          class="add-btn"
+          [disabled]="!newSubProductId || !newSubProductQty"
+        >
+          <ion-icon slot="start" name="add-outline"></ion-icon>
+          Agregar subproducto
+        </ion-button>
+      </ng-container>
+
+    </ion-card-content>
+  </ion-card>
+
+  <!-- ─── Lista de ingredientes actuales ───────────────── -->
+  <h3 class="section-title">Ingredientes ({{ rows.length }})</h3>
+
+  <ion-card *ngIf="rows.length === 0" class="empty-recipe">
+    <ion-card-content>
+      <ion-icon name="cube-outline"></ion-icon>
+      <p>Sin ingredientes. Agrega materiales o subproductos arriba.</p>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-list lines="full" *ngIf="rows.length > 0">
+    <ion-item *ngFor="let row of rows; let i = index">
+      <ion-label>
+        <h3>
+          <ion-chip
+            [color]="row.type === 'subproduct' ? 'tertiary' : 'primary'"
+            style="font-size:10px;height:18px;margin:0 4px 0 0"
+          >
+            {{ row.type === 'subproduct' ? 'Sub' : 'Ins' }}
+          </ion-chip>
+          {{ row.name }}
+        </h3>
+        <p>
+          {{ row.quantity }} {{ row.unit }} ×
+          {{ row.unitCost | gtq }} =
+          <strong>{{ row.quantity * row.unitCost | gtq }}</strong>
+        </p>
+      </ion-label>
+
+      <ion-input
+        slot="end"
+        type="number"
+        inputmode="decimal"
+        [(ngModel)]="row.quantity"
+        min="0.001"
+        step="0.01"
+        class="qty-input"
+      ></ion-input>
+
+      <ion-button
+        slot="end"
+        fill="clear"
+        color="danger"
+        (click)="removeRow(i)"
+      >
+        <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+      </ion-button>
+    </ion-item>
+  </ion-list>
+
+</ion-content>
