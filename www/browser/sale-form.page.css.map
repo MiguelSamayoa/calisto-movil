@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["src/app/pages/sales/sale-form/sale-form.page.scss"],
-  "sourcesContent": ["ion-card { border-radius: 16px; margin-bottom: 12px; }\n\n.lot-info {\n  padding: 8px 0;\n}\n\n.total-card {\n  background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);\n\n  .total-row {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    color: rgba(255,255,255,0.8);\n  }\n\n  .total-amount {\n    color: #b9f6ca;\n    font-size: 1.5rem;\n  }\n}\n\n.save-btn {\n  margin: 8px 0 32px;\n  height: 52px;\n  font-size: 1rem;\n}\n"],
-  "mappings": ";AAAA;AAAW,iBAAA;AAAqB,iBAAA;;AAEhC,CAAA;AACE,WAAA,IAAA;;AAGF,CAAA;AACE;IAAA;MAAA,MAAA;MAAA,QAAA,EAAA;MAAA,QAAA;;AAEA,CAHF,WAGE,CAAA;AACE,WAAA;AACA,mBAAA;AACA,eAAA;AACA,SAAA,KAAA,GAAA,EAAA,GAAA,EAAA,GAAA,EAAA;;AAGF,CAVF,WAUE,CAAA;AACE,SAAA;AACA,aAAA;;AAIJ,CAAA;AACE,UAAA,IAAA,EAAA;AACA,UAAA;AACA,aAAA;;",
-  "names": []
-}

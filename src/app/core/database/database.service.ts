@@ -105,13 +105,23 @@ export class DatabaseService {
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
-    await this.db.execute('BEGIN TRANSACTION;');
+    const txState = await this.db.isTransactionActive();
+    const startedHere = !txState.result;
+
+    if (startedHere) {
+      await this.db.beginTransaction();
+    }
+
     try {
       const result = await fn();
-      await this.db.execute('COMMIT;');
+      if (startedHere) {
+        await this.db.commitTransaction();
+      }
       return result;
     } catch (error) {
-      await this.db.execute('ROLLBACK;');
+      if (startedHere) {
+        await this.db.rollbackTransaction();
+      }
       throw error;
     }
   }
