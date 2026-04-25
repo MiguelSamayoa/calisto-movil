@@ -49,9 +49,18 @@ export interface CostBreakdownItem {
 export interface StockWarning {
   materialId: number;
   materialName: string;
+  unit: string;
   available: number;
+  required: number;
   needed: number;
   deficit: number;
+}
+
+export class InventoryValidationError extends Error {
+  constructor(public shortages: StockWarning[]) {
+    super('Inventario insuficiente para iniciar la producción del lote.');
+    this.name = 'InventoryValidationError';
+  }
 }
 
 /** Lote con datos del producto expandidos */

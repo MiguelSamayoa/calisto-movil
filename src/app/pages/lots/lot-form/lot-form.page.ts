@@ -22,6 +22,8 @@ import { Product } from '@models/product.model';
 import {
   LotCostCalculation,
   CreateProductionLotDto,
+  InventoryValidationError,
+  StockWarning,
 } from '@models/production-lot.model';
 import { GtqCurrencyPipe } from '@shared/pipes/gtq-currency.pipe';
 
@@ -138,18 +140,11 @@ export class LotFormPage implements OnInit {
     if (!this.calculation || !this.selectedProductId || !this.quantity) return;
 
     if (this.hasStockWarnings) {
-      const alert = await this.alertCtrl.create({
-        header: 'Advertencia de stock',
-        message: '¿Confirmar de todas formas? El stock de algunos materiales será negativo.',
-        buttons: [
-          { text: 'Cancelar', role: 'cancel' },
-          { text: 'Confirmar igual', handler: () => this.saveLot() },
-        ],
-      });
-      await alert.present();
-    } else {
-      await this.saveLot();
+      await this.showStockDeficitAlert(this.calculation.stockWarnings);
+      return;
     }
+
+    await this.saveLot();
   }
 
   private async saveLot(): Promise<void> {
@@ -175,14 +170,41 @@ export class LotFormPage implements OnInit {
       );
       this.router.navigate(['/tabs/lots']);
     } catch (err: unknown) {
-      this.showToast(
-        err instanceof Error ? err.message : 'Error al crear lote',
-        'danger'
-      );
+      if (err instanceof InventoryValidationError) {
+        await this.showStockDeficitAlert(err.shortages);
+      } else {
+        this.showToast(
+          err instanceof Error ? err.message : 'Error al crear lote',
+          'danger'
+        );
+      }
     } finally {
       this.saving = false;
       await loading.dismiss();
     }
+  }
+
+  private async showStockDeficitAlert(shortages: StockWarning[]): Promise<void> {
+    const details = shortages
+      .slice(0, 10)
+      .map(
+        s =>
+          `<li><strong>${s.materialName}</strong>: requiere ${s.required.toFixed(2)} ${s.unit}, ` +
+          `disponible ${s.available.toFixed(2)} ${s.unit}, déficit ${s.deficit.toFixed(2)} ${s.unit}</li>`
+      )
+      .join('');
+
+    const extra = shortages.length > 10
+      ? `<p>Y ${shortages.length - 10} insumos más con déficit.</p>`
+      : '';
+
+    const alert = await this.alertCtrl.create({
+      header: 'Inventario insuficiente',
+      message:
+        `<p>No se puede registrar el lote. Compra o repone estos insumos:</p><ul>${details}</ul>${extra}`,
+      buttons: ['Entendido'],
+    });
+    await alert.present();
   }
 
   private async showToast(msg: string, color: string): Promise<void> {

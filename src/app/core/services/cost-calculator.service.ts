@@ -2,29 +2,33 @@ import { Injectable } from '@angular/core';
 import { DatabaseService } from '@db/database.service';
 import { ProductRepository } from '@repos/product.repository';
 import { ProductionLotRepository } from '@repos/production-lot.repository';
-import { RecipeItemRepository } from '@repos/recipe-item.repository';
 import {
   LotCostCalculation,
   CostBreakdownItem,
   StockWarning,
   CreateProductionLotDto,
   ProductionLot,
+  InventoryValidationError,
 } from '@models/production-lot.model';
 
-interface RawMaterialCostRow {
-  material_id: number;
-  material_name: string;
-  unit: string;
-  quantity: number;
-  unit_cost: number;
-  stock: number;
+interface ProductSnapshotRow {
+  id: number;
+  name: string;
+  yield_units: number;
 }
 
-interface RawSubProductCostRow {
-  sub_product_id: number;
-  sub_product_name: string;
+interface RecipeRow {
+  material_id: number | null;
+  sub_product_id: number | null;
   quantity: number;
-  unit_cost: number; // costo por unidad calculado de su propia receta
+}
+
+interface MaterialSnapshotRow {
+  id: number;
+  name: string;
+  unit: string;
+  unit_cost: number;
+  stock: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -32,9 +36,118 @@ export class CostCalculatorService {
   constructor(
     private db: DatabaseService,
     private productRepo: ProductRepository,
-    private lotRepo: ProductionLotRepository,
-    private recipeRepo: RecipeItemRepository
+    private lotRepo: ProductionLotRepository
   ) {}
+
+  private async getProductSnapshot(productId: number): Promise<ProductSnapshotRow> {
+    const rows = await this.db.query<ProductSnapshotRow>(
+      `SELECT id, name, yield_units
+       FROM products
+       WHERE id = ?`,
+      [productId]
+    );
+
+    const product = rows[0];
+    if (!product) throw new Error(`Producto #${productId} no encontrado`);
+    if (product.yield_units <= 0) {
+      throw new Error(`El rendimiento del producto "${product.name}" no es válido.`);
+    }
+    return product;
+  }
+
+  private async getRecipeRows(productId: number): Promise<RecipeRow[]> {
+    return this.db.query<RecipeRow>(
+      `SELECT material_id, sub_product_id, quantity
+       FROM recipe_items
+       WHERE product_id = ?`,
+      [productId]
+    );
+  }
+
+  private async explodeBomToMaterials(
+    productId: number,
+    requiredUnits: number,
+    chain: number[] = []
+  ): Promise<Map<number, number>> {
+    if (chain.includes(productId)) {
+      const loop = [...chain, productId].join(' -> ');
+      throw new Error(`La receta tiene una referencia circular entre subproductos (${loop}).`);
+    }
+
+    const product = await this.getProductSnapshot(productId);
+    const recipeRows = await this.getRecipeRows(productId);
+    if (recipeRows.length === 0) {
+      throw new Error(`El producto "${product.name}" no tiene ingredientes en su receta.`);
+    }
+
+    const batches = requiredUnits / product.yield_units;
+    const totals = new Map<number, number>();
+
+    for (const row of recipeRows) {
+      const qtyForCurrentRun = row.quantity * batches;
+      if (row.material_id !== null) {
+        totals.set(
+          row.material_id,
+          (totals.get(row.material_id) ?? 0) + qtyForCurrentRun
+        );
+        continue;
+      }
+
+      if (row.sub_product_id !== null) {
+        const subTotals = await this.explodeBomToMaterials(
+          row.sub_product_id,
+          qtyForCurrentRun,
+          [...chain, productId]
+        );
+        for (const [materialId, needed] of subTotals.entries()) {
+          totals.set(materialId, (totals.get(materialId) ?? 0) + needed);
+        }
+      }
+    }
+
+    return totals;
+  }
+
+  private async getMaterialSnapshots(materialIds: number[]): Promise<MaterialSnapshotRow[]> {
+    if (materialIds.length === 0) return [];
+
+    const placeholders = materialIds.map(() => '?').join(', ');
+    return this.db.query<MaterialSnapshotRow>(
+      `SELECT id, name, unit, unit_cost, stock
+       FROM materials
+       WHERE id IN (${placeholders})`,
+      materialIds
+    );
+  }
+
+  private buildStockWarnings(
+    requiredByMaterial: Map<number, number>,
+    materials: MaterialSnapshotRow[]
+  ): StockWarning[] {
+    const byId = new Map(materials.map(m => [m.id, m]));
+    const warnings: StockWarning[] = [];
+
+    for (const [materialId, required] of requiredByMaterial.entries()) {
+      const material = byId.get(materialId);
+      if (!material) {
+        throw new Error(`No se encontró el insumo #${materialId} en inventario.`);
+      }
+
+      if (material.stock < required) {
+        warnings.push({
+          materialId,
+          materialName: material.name,
+          unit: material.unit,
+          available: material.stock,
+          required,
+          needed: required,
+          deficit: required - material.stock,
+        });
+      }
+    }
+
+    return warnings.sort((a, b) => b.deficit - a.deficit);
+  }
 
   /**
    * Calcula el costo completo para un lote antes de confirmarlo.
@@ -48,89 +161,36 @@ export class CostCalculatorService {
     quantity: number,
     marginPct: number
   ): Promise<LotCostCalculation> {
-    const product = await this.productRepo.findById(productId);
-    if (!product) throw new Error(`Producto #${productId} no encontrado`);
+    const product = await this.getProductSnapshot(productId);
 
-    // ─── Materiales directos de la receta ───────────────────────────────────
-    const materialRows = await this.db.query<RawMaterialCostRow>(
-      `SELECT
-         ri.material_id,
-         m.name       AS material_name,
-         m.unit,
-         ri.quantity,
-         m.unit_cost,
-         m.stock
-       FROM recipe_items ri
-       JOIN materials m ON m.id = ri.material_id
-       WHERE ri.product_id = ? AND ri.material_id IS NOT NULL`,
-      [productId]
-    );
-
-    // ─── Subproductos de la receta (con costo calculado) ─────────────────────
-    const subProductRows = await this.db.query<RawSubProductCostRow>(
-      `SELECT
-         ri.sub_product_id,
-         p.name AS sub_product_name,
-         ri.quantity,
-         CASE
-           WHEN p.yield_units > 0
-           THEN COALESCE(
-             (SELECT SUM(ri2.quantity * m2.unit_cost)
-              FROM recipe_items ri2
-              JOIN materials m2 ON m2.id = ri2.material_id
-              WHERE ri2.product_id = ri.sub_product_id
-                AND ri2.material_id IS NOT NULL),
-             0
-           ) / p.yield_units
-           ELSE 0
-         END AS unit_cost
-       FROM recipe_items ri
-       JOIN products p ON p.id = ri.sub_product_id
-       WHERE ri.product_id = ? AND ri.sub_product_id IS NOT NULL`,
-      [productId]
-    );
-
-    if (materialRows.length === 0 && subProductRows.length === 0) {
-      throw new Error(
-        `El producto "${product.name}" no tiene ingredientes en su receta.`
-      );
-    }
-
-    const yieldUnits = product.yieldUnits;
+    const yieldUnits = product.yield_units;
     const batchMultiplier = Math.ceil(quantity / yieldUnits);
     const totalUnits = batchMultiplier * yieldUnits;
+    const requiredByMaterial = await this.explodeBomToMaterials(productId, totalUnits);
 
-    // ─── Desglose de costos ──────────────────────────────────────────────────
-    const breakdown: CostBreakdownItem[] = [
-      ...materialRows.map(row => {
-        const quantityNeeded = row.quantity * batchMultiplier;
+    const materialRows = await this.getMaterialSnapshots([...requiredByMaterial.keys()]);
+    if (materialRows.length === 0) {
+      throw new Error(`El producto "${product.name}" no tiene insumos válidos para producir.`);
+    }
+
+    const breakdown: CostBreakdownItem[] = materialRows
+      .map(row => {
+        const quantityNeeded = requiredByMaterial.get(row.id) ?? 0;
         return {
-          materialId: row.material_id,
-          materialName: row.material_name,
+          materialId: row.id,
+          materialName: row.name,
           unit: row.unit,
           quantityNeeded,
           unitCost: row.unit_cost,
           subtotal: quantityNeeded * row.unit_cost,
         };
-      }),
-      ...subProductRows.map(row => {
-        const quantityNeeded = row.quantity * batchMultiplier;
-        return {
-          materialId: 0, // placeholder, es un subproducto
-          materialName: `[Subproducto] ${row.sub_product_name}`,
-          unit: 'unidad',
-          quantityNeeded,
-          unitCost: row.unit_cost,
-          subtotal: quantityNeeded * row.unit_cost,
-        };
-      }),
-    ];
-
-    const recipeCostPerBatch =
-      materialRows.reduce((sum, r) => sum + r.quantity * r.unit_cost, 0) +
-      subProductRows.reduce((sum, r) => sum + r.quantity * r.unit_cost, 0);
+      })
+      .sort((a, b) => a.materialName.localeCompare(b.materialName));
 
     const totalMaterialsCost = breakdown.reduce((sum, b) => sum + b.subtotal, 0);
+    const recipeCostPerBatch = batchMultiplier > 0
+      ? totalMaterialsCost / batchMultiplier
+      : 0;
     const costPerUnit = totalUnits > 0 ? totalMaterialsCost / totalUnits : 0;
 
     const suggestedPrice =
@@ -138,16 +198,7 @@ export class CostCalculatorService {
         ? costPerUnit / (1 - marginPct / 100)
         : costPerUnit * 2;
 
-    // ─── Alertas de stock (solo materiales directos) ─────────────────────────
-    const stockWarnings: StockWarning[] = materialRows
-      .filter(row => row.stock < row.quantity * batchMultiplier)
-      .map(row => ({
-        materialId: row.material_id,
-        materialName: row.material_name,
-        available: row.stock,
-        needed: row.quantity * batchMultiplier,
-        deficit: row.quantity * batchMultiplier - row.stock,
-      }));
+    const stockWarnings = this.buildStockWarnings(requiredByMaterial, materialRows);
 
     return {
       productId,
@@ -166,18 +217,60 @@ export class CostCalculatorService {
   }
 
   /**
-   * Confirma la creación del lote: guarda en DB y dispara los triggers
-   * que descuentan el stock de materiales automáticamente.
+   * Confirma la creación del lote dentro de una transacción:
+   * 1) valida faltantes con inventario actual,
+   * 2) descuenta stock de todos los insumos (incluye subproductos explotados),
+   * 3) crea el lote.
    */
   async confirmLot(
     dto: CreateProductionLotDto,
     calculation: LotCostCalculation
   ): Promise<ProductionLot> {
-    return this.lotRepo.create(
-      dto,
-      calculation.totalMaterialsCost,
-      calculation.costPerUnit
-    );
+    return this.db.transaction(async () => {
+      const latest = await this.calculateLotCost(
+        dto.productId,
+        dto.quantity,
+        calculation.desiredMarginPct
+      );
+
+      if (latest.stockWarnings.length > 0) {
+        throw new InventoryValidationError(latest.stockWarnings);
+      }
+
+      for (const item of latest.breakdown) {
+        const result = await this.db.execute(
+          `UPDATE materials
+           SET stock = stock - ?
+           WHERE id = ? AND stock >= ?`,
+          [item.quantityNeeded, item.materialId, item.quantityNeeded]
+        );
+
+        if (result.changes === 0) {
+          const rows = await this.db.query<MaterialSnapshotRow>(
+            `SELECT id, name, unit, stock FROM materials WHERE id = ?`,
+            [item.materialId]
+          );
+          const material = rows[0];
+          throw new InventoryValidationError([
+            {
+              materialId: item.materialId,
+              materialName: material?.name ?? `Insumo #${item.materialId}`,
+              unit: material?.unit ?? item.unit,
+              available: material?.stock ?? 0,
+              required: item.quantityNeeded,
+              needed: item.quantityNeeded,
+              deficit: Math.max(item.quantityNeeded - (material?.stock ?? 0), 0),
+            },
+          ]);
+        }
+      }
+
+      return this.lotRepo.create(
+        dto,
+        latest.totalMaterialsCost,
+        latest.costPerUnit
+      );
+    });
   }
 
   /**

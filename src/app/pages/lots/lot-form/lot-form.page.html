@@ -67,10 +67,10 @@
     <!-- Alertas de stock -->
     <ion-card *ngIf="hasStockWarnings" color="warning" class="warning-card">
       <ion-card-content>
-        <strong>Advertencia de stock:</strong>
+        <strong>Inventario insuficiente para este lote:</strong>
         <ul>
           <li *ngFor="let w of calculation.stockWarnings">
-            {{ w.materialName }}: necesitas {{ w.needed | number:'1.2-2' }}
+            {{ w.materialName }}: requiere {{ w.required | number:'1.2-2' }}
             {{ ' ' }}pero tienes {{ w.available | number:'1.2-2' }}
             (déficit: {{ w.deficit | number:'1.2-2' }})
           </li>

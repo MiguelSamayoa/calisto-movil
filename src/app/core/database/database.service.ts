@@ -6,9 +6,10 @@ import {
 } from '@capacitor-community/sqlite';
 import { V1_MIGRATION } from './migrations/v1.migration';
 import { V2_MIGRATION } from './migrations/v2.migration';
+import { V3_MIGRATION } from './migrations/v3.migration';
 
 const DB_NAME = 'calisto_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 @Injectable({ providedIn: 'root' })
 export class DatabaseService {
@@ -74,6 +75,13 @@ export class DatabaseService {
       }
       await this.db.execute(`PRAGMA user_version = ${V2_MIGRATION.version};`);
     }
+
+    if (currentVersion < V3_MIGRATION.version) {
+      for (const stmt of V3_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V3_MIGRATION.version};`);
+    }
   }
 
   // ─── Acceso a la conexión ─────────────────────────────────────────────────
@@ -97,7 +105,9 @@ export class DatabaseService {
     sql: string,
     params: (string | number | null)[] = []
   ): Promise<{ lastId: number; changes: number }> {
-    const result = await this.db.run(sql, params);
+    // run() abre transacción implícita por defecto; la desactivamos para
+    // permitir uso seguro dentro de transaction() sin nested beginTransaction.
+    const result = await this.db.run(sql, params, false);
     return {
       lastId: result.changes?.lastId ?? 0,
       changes: result.changes?.changes ?? 0,
@@ -105,11 +115,17 @@ export class DatabaseService {
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
-    const txState = await this.db.isTransactionActive();
-    const startedHere = !txState.result;
+    let startedHere = false;
 
-    if (startedHere) {
+    try {
       await this.db.beginTransaction();
+      startedHere = true;
+    } catch (err: unknown) {
+      // Si ya existe una transacción activa, continúa sin iniciar una nueva
+      const errMsg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+      if (!errMsg.includes('already in transaction')) {
+        throw err;
+      }
     }
 
     try {
