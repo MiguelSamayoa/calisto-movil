@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import {
   CapacitorSQLite,
   SQLiteConnection,
@@ -7,9 +8,15 @@ import {
 import { V1_MIGRATION } from './migrations/v1.migration';
 import { V2_MIGRATION } from './migrations/v2.migration';
 import { V3_MIGRATION } from './migrations/v3.migration';
+import { V4_MIGRATION } from './migrations/v4.migration';
+import { V5_MIGRATION } from './migrations/v5.migration';
+import { V6_MIGRATION } from './migrations/v6.migration';
+import { V7_MIGRATION } from './migrations/v7.migration';
+import { V8_MIGRATION } from './migrations/v8.migration';
+import { V9_MIGRATION } from './migrations/v9.migration';
 
 const DB_NAME = 'calisto_db';
-const DB_VERSION = 3;
+const DB_VERSION = 9;
 
 @Injectable({ providedIn: 'root' })
 export class DatabaseService {
@@ -22,11 +29,19 @@ export class DatabaseService {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
+    await this.initializeWebLayer();
     await this.ensureConnection();
     await this.configurePragmas();  // PRAGMAs primero (antes de migraciones)
     await this.runMigrations();
 
     this.initialized = true;
+  }
+
+  private async initializeWebLayer(): Promise<void> {
+    if (Capacitor.getPlatform() !== 'web') return;
+
+    await customElements.whenDefined('jeep-sqlite');
+    await this.sqlite.initWebStore();
   }
 
   private async ensureConnection(): Promise<void> {
@@ -81,6 +96,48 @@ export class DatabaseService {
         await this.db.execute(stmt);
       }
       await this.db.execute(`PRAGMA user_version = ${V3_MIGRATION.version};`);
+    }
+
+    if (currentVersion < V4_MIGRATION.version) {
+      for (const stmt of V4_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V4_MIGRATION.version};`);
+    }
+
+    if (currentVersion < V5_MIGRATION.version) {
+      for (const stmt of V5_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V5_MIGRATION.version};`);
+    }
+
+    if (currentVersion < V6_MIGRATION.version) {
+      for (const stmt of V6_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V6_MIGRATION.version};`);
+    }
+
+    if (currentVersion < V7_MIGRATION.version) {
+      for (const stmt of V7_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V7_MIGRATION.version};`);
+    }
+
+    if (currentVersion < V8_MIGRATION.version) {
+      for (const stmt of V8_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V8_MIGRATION.version};`);
+    }
+
+    if (currentVersion < V9_MIGRATION.version) {
+      for (const stmt of V9_MIGRATION.statements) {
+        await this.db.execute(stmt);
+      }
+      await this.db.execute(`PRAGMA user_version = ${V9_MIGRATION.version};`);
     }
   }
 

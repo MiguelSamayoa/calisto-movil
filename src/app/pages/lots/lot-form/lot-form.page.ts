@@ -82,14 +82,21 @@ export class LotFormPage implements OnInit {
 
   // ─── Cálculo reactivo ──────────────────────────────────────────────────────
 
-  onInputChange(): void {
+  onInputChange(resetCalculation = true): void {
     clearTimeout(this.calcTimer);
-    this.calculation = null;
+    if (resetCalculation) {
+      this.calculation = null;
+    }
     this.calcError = '';
 
     if (!this.selectedProductId || !this.quantity || this.quantity <= 0) return;
 
     this.calcTimer = setTimeout(() => this.calculate(), 400);
+  }
+
+  onMarginChange(): void {
+    // Al mover el slider mantenemos el cálculo visible y actualizamos solo los datos.
+    this.onInputChange(false);
   }
 
   async calculate(): Promise<void> {

@@ -5,18 +5,58 @@ export interface Sale {
   quantity: number;
   unitPrice: number;
   totalAmount: number;
+  costBasisTotal: number;
+  unitCostApplied: number;
+  pricePolicy: SalePricePolicy;
   notes: string | null;
   soldAt: string;
   createdAt: string;
+  createdBy: string;
 }
 
 export interface CreateSaleDto {
   lotId?: number;
   productId: number;
   quantity: number;
-  unitPrice: number;
+  unitPrice?: number;
   notes?: string;
   soldAt?: string;
+  createdBy?: string;
+}
+
+export type SalePricePolicy = 'FIFO_MAX';
+
+export interface SaleLotAllocationPreview {
+  lotId: number;
+  producedAt: string;
+  quantity: number;
+  remainingBefore: number;
+  remainingAfter: number;
+  sellingPrice: number;
+  costPerUnit: number;
+}
+
+export interface SalePreview {
+  productId: number;
+  productName: string;
+  requestedQuantity: number;
+  availableQuantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  costBasisTotal: number;
+  lotsUsed: number;
+  allocations: SaleLotAllocationPreview[];
+}
+
+export class SaleStockInsufficientError extends Error {
+  constructor(
+    public productId: number,
+    public requestedQuantity: number,
+    public availableQuantity: number
+  ) {
+    super('Stock insuficiente para completar la venta.');
+    this.name = 'SaleStockInsufficientError';
+  }
 }
 
 /** Venta con datos expandidos del producto */
@@ -25,7 +65,7 @@ export interface SaleWithProduct extends Sale {
   productCategory: string;
   productPhotoPath: string | null;
   costPerUnit: number | null;   // del lote asociado
-  profit: number | null;        // totalAmount - (costPerUnit * quantity)
+  profit: number | null;        // totalAmount - costBasisTotal
 }
 
 // ─── Agregaciones para Dashboard ──────────────────────────────────────────────
@@ -54,10 +94,17 @@ export interface DashboardStats {
   todayRevenue: number;
   todayCost: number;
   todayProfit: number;
+  todayAdjustmentsCost: number;
+  todayNetProfitReal: number;
   monthRevenue: number;
   monthCost: number;
   monthProfit: number;
   monthProfitMargin: number;
+  monthAdjustmentsCogs: number;
+  monthAdjustmentsOpex: number;
+  monthAdjustmentsTotal: number;
+  monthNetProfitReal: number;
+  monthNetMarginReal: number;
   last7Days: DailyRevenue[];
   topProducts: TopProductStat[];
   lowStockMaterials: LowStockAlert[];

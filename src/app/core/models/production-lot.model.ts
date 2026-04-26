@@ -7,10 +7,13 @@ export interface ProductionLot {
   sellingPrice: number;
   profitMargin: number;  // porcentaje
   remainingUnits: number;
+  status: ProductionLotStatus;
   notes: string | null;
   producedAt: string;
   createdAt: string;
 }
+
+export type ProductionLotStatus = 'ABIERTO' | 'CERRADO' | 'ANULADO';
 
 export interface CreateProductionLotDto {
   productId: number;
@@ -19,6 +22,38 @@ export interface CreateProductionLotDto {
   profitMargin: number;
   notes?: string;
   producedAt?: string;
+}
+
+export type LotInventoryAdjustmentReason =
+  | 'VENCIMIENTO'
+  | 'ERROR_PRODUCCION'
+  | 'DESPERDICIO'
+  | 'CORTESIA'
+  | 'CONSUMO_INTERNO'
+  | 'MERMA'
+  | 'AJUSTE_MANUAL';
+
+export type AccountingTreatment = 'COGS' | 'OPEX';
+
+export interface CreateLotInventoryAdjustmentDto {
+  quantity: number;
+  reason: LotInventoryAdjustmentReason;
+  notes?: string;
+  createdBy?: string;
+}
+
+export interface LotInventoryAdjustment {
+  id: number;
+  lotId: number;
+  productId: number;
+  quantity: number;
+  reason: LotInventoryAdjustmentReason;
+  accountingTreatment: AccountingTreatment;
+  unitCostSnapshot: number;
+  totalCostSnapshot: number;
+  createdBy: string;
+  notes: string | null;
+  createdAt: string;
 }
 
 /** Resultado del cálculo de costos antes de confirmar el lote */

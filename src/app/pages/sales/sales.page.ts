@@ -1,17 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonTitle, IonContent,
   IonList, IonItem, IonLabel, IonNote, IonBadge,
   IonFab, IonFabButton, IonIcon,
   IonRefresher, IonRefresherContent, IonChip,
-  AlertController, ToastController,
-  IonItemSliding, IonItemOptions, IonItemOption,
   RefresherCustomEvent,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { addOutline, cashOutline, trashOutline } from 'ionicons/icons';
+import { addOutline, cashOutline } from 'ionicons/icons';
 import { SaleService } from '@services/sale.service';
 import { SaleWithProduct } from '@models/sale.model';
 import { GtqCurrencyPipe } from '@shared/pipes/gtq-currency.pipe';
@@ -25,7 +24,6 @@ import { GtqCurrencyPipe } from '@shared/pipes/gtq-currency.pipe';
     IonList, IonItem, IonLabel, IonNote, IonBadge,
     IonFab, IonFabButton, IonIcon,
     IonRefresher, IonRefresherContent, IonChip,
-    IonItemSliding, IonItemOptions, IonItemOption,
   ],
   template: `
     <ion-header>
@@ -52,31 +50,24 @@ import { GtqCurrencyPipe } from '@shared/pipes/gtq-currency.pipe';
       </div>
 
       <ion-list *ngIf="!loading && sales.length > 0" lines="full">
-        <ion-item-sliding *ngFor="let s of sales">
-          <ion-item>
-            <ion-label>
-              <h3>{{ s.productName }}</h3>
-              <p>{{ s.quantity }} × {{ s.unitPrice | gtq }}
-                <ng-container *ngIf="s.profit != null">
-                  · <span [style.color]="s.profit >= 0 ? '#388e3c' : '#c62828'">
-                    {{ s.profit | gtq }} ganancia
-                  </span>
-                </ng-container>
-              </p>
-              <p style="font-size:0.72rem;color:var(--ion-color-medium)">
-                {{ s.soldAt | date:'dd/MM/yyyy HH:mm' }}
-              </p>
-            </ion-label>
-            <ion-note slot="end" style="font-weight:700;font-size:1rem">
-              {{ s.totalAmount | gtq }}
-            </ion-note>
-          </ion-item>
-          <ion-item-options side="end">
-            <ion-item-option color="danger" (click)="confirmDelete(s)">
-              <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-            </ion-item-option>
-          </ion-item-options>
-        </ion-item-sliding>
+        <ion-item *ngFor="let s of sales">
+          <ion-label>
+            <h3>{{ s.productName }}</h3>
+            <p>{{ s.quantity }} × {{ s.unitPrice | gtq }}
+              <ng-container *ngIf="s.profit != null">
+                · <span [style.color]="s.profit >= 0 ? '#388e3c' : '#c62828'">
+                  {{ s.profit | gtq }} ganancia
+                </span>
+              </ng-container>
+            </p>
+            <p style="font-size:0.72rem;color:var(--ion-color-medium)">
+              {{ s.soldAt | date:'dd/MM/yyyy HH:mm' }}
+            </p>
+          </ion-label>
+          <ion-note slot="end" style="font-weight:700;font-size:1rem">
+            {{ s.totalAmount | gtq }}
+          </ion-note>
+        </ion-item>
       </ion-list>
 
       <div *ngIf="!loading && sales.length === 0"
@@ -94,9 +85,10 @@ import { GtqCurrencyPipe } from '@shared/pipes/gtq-currency.pipe';
     </ion-content>
   `,
 })
-export class SalesPage implements OnInit {
+export class SalesPage implements OnInit, OnDestroy {
   sales: SaleWithProduct[] = [];
   loading = true;
+  private readonly destroy$ = new Subject<void>();
 
   get todayRevenue(): number {
     const today = new Date().toISOString().slice(0, 10);
@@ -107,11 +99,26 @@ export class SalesPage implements OnInit {
 
   constructor(
     private saleService: SaleService,
-    private alertCtrl: AlertController,
-    private toastCtrl: ToastController,
-  ) { addIcons({ addOutline, cashOutline, trashOutline }); }
+  ) { addIcons({ addOutline, cashOutline }); }
 
-  async ngOnInit(): Promise<void> { await this.load(); }
+  async ngOnInit(): Promise<void> {
+    this.saleService.salesChanged$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        void this.load();
+      });
+
+    await this.load();
+  }
+
+  async ionViewWillEnter(): Promise<void> {
+    await this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   async handleRefresh(e: RefresherCustomEvent): Promise<void> {
     await this.load(); e.detail.complete();
@@ -121,22 +128,5 @@ export class SalesPage implements OnInit {
     this.loading = true;
     try { this.sales = await this.saleService.getAll(100); }
     finally { this.loading = false; }
-  }
-
-  async confirmDelete(s: SaleWithProduct): Promise<void> {
-    const alert = await this.alertCtrl.create({
-      header: 'Eliminar venta',
-      message: '¿Eliminar este registro de venta?',
-      buttons: [
-        { text: 'Cancelar', role: 'cancel' },
-        { text: 'Eliminar', role: 'destructive', handler: async () => {
-          await this.saleService.deleteSale(s.id);
-          await this.load();
-          const t = await this.toastCtrl.create({ message: 'Venta eliminada', duration: 2000, color: 'success', position: 'bottom' });
-          t.present();
-        }},
-      ],
-    });
-    await alert.present();
   }
 }

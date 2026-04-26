@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install *)",
       "Bash(npx cap *)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "Bash(npm run *)"
     ]
   }
 }

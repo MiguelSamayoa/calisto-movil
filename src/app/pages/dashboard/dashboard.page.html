@@ -22,7 +22,7 @@
         <ion-card class="stat-card stat-card--green">
           <ion-card-content>
             <div class="stat-value">{{ stats.todayRevenue | gtq }}</div>
-            <div class="stat-label">Ingresos</div>
+            <div class="stat-label">Ingresos Brutos</div>
           </ion-card-content>
         </ion-card>
       </ion-col>
@@ -53,7 +53,29 @@
         >
           <ion-card-content>
             <div class="stat-value">{{ stats.todayProfit | gtq }}</div>
-            <div class="stat-label">Ganancia</div>
+            <div class="stat-label">Utilidad bruta</div>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="6">
+        <ion-card class="stat-card stat-card--orange">
+          <ion-card-content>
+            <div class="stat-value">{{ stats.todayAdjustmentsCost | gtq }}</div>
+            <div class="stat-label">Ajustes valorizados</div>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="6">
+        <ion-card
+          class="stat-card"
+          [class.stat-card--green]="stats.todayNetProfitReal >= 0"
+          [class.stat-card--red]="stats.todayNetProfitReal < 0"
+        >
+          <ion-card-content>
+            <div class="stat-value">{{ stats.todayNetProfitReal | gtq }}</div>
+            <div class="stat-label">Utilidad operativa</div>
           </ion-card-content>
         </ion-card>
       </ion-col>
@@ -67,19 +89,31 @@
     <ion-card-content>
       <ion-grid>
         <ion-row>
-          <ion-col>
+          <ion-col size="6" sizeMd="3">
             <div class="month-stat">
               <div class="month-value">{{ stats.monthRevenue | gtq }}</div>
               <div class="month-label">Ingresos</div>
             </div>
           </ion-col>
-          <ion-col>
+          <ion-col size="6" sizeMd="3">
             <div class="month-stat">
               <div class="month-value">{{ stats.monthCost | gtq }}</div>
               <div class="month-label">Costos</div>
             </div>
           </ion-col>
-          <ion-col>
+          <ion-col size="6" sizeMd="3">
+            <div class="month-stat">
+              <div
+                class="month-value"
+                [class.profit-positive]="stats.monthProfit >= 0"
+                [class.profit-negative]="stats.monthProfit < 0"
+              >
+                {{ stats.monthProfit | gtq }}
+              </div>
+              <div class="month-label">Utilidad bruta</div>
+            </div>
+          </ion-col>
+          <ion-col size="6" sizeMd="3">
             <div class="month-stat">
               <div
                 class="month-value"
@@ -88,7 +122,54 @@
               >
                 {{ stats.monthProfitMargin | number:'1.1-1' }}%
               </div>
-              <div class="month-label">Margen</div>
+              <div class="month-label">Margen bruto</div>
+            </div>
+          </ion-col>
+
+          <ion-col size="6" sizeMd="3">
+            <div class="month-stat">
+              <div class="month-value">{{ stats.monthAdjustmentsCogs | gtq }}</div>
+              <div class="month-label">Ajustes COGS</div>
+            </div>
+          </ion-col>
+
+          <ion-col size="6" sizeMd="3">
+            <div class="month-stat">
+              <div class="month-value">{{ stats.monthAdjustmentsOpex | gtq }}</div>
+              <div class="month-label">Ajustes OPEX</div>
+            </div>
+          </ion-col>
+
+          <ion-col size="6" sizeMd="3">
+            <div class="month-stat">
+              <div class="month-value">{{ stats.monthAdjustmentsTotal | gtq }}</div>
+              <div class="month-label">Ajustes totales</div>
+            </div>
+          </ion-col>
+
+          <ion-col size="6" sizeMd="3">
+            <div class="month-stat">
+              <div
+                class="month-value"
+                [class.profit-positive]="stats.monthNetProfitReal >= 0"
+                [class.profit-negative]="stats.monthNetProfitReal < 0"
+              >
+                {{ stats.monthNetProfitReal | gtq }}
+              </div>
+              <div class="month-label">Utilidad operativa</div>
+            </div>
+          </ion-col>
+
+          <ion-col size="6" sizeMd="3">
+            <div class="month-stat">
+              <div
+                class="month-value"
+                [class.profit-positive]="stats.monthNetMarginReal >= 0"
+                [class.profit-negative]="stats.monthNetMarginReal < 0"
+              >
+                {{ stats.monthNetMarginReal | number:'1.1-1' }}%
+              </div>
+              <div class="month-label">Margen operativo</div>
             </div>
           </ion-col>
         </ion-row>

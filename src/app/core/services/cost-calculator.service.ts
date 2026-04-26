@@ -291,6 +291,77 @@ export class CostCalculatorService {
   }
 
   /**
+   * Anula un lote en estado ABIERTO:
+   * 1) Verifica que el lote exista y esté ABIERTO.
+   * 2) Restaura al inventario de materiales las unidades proporcionales a remaining_units.
+   * 3) Marca el lote como ANULADO.
+   * 4) Registra el evento en lot_audit_log.
+   *
+   * No se restaura el costo de las unidades ya vendidas (se mantienen en sales).
+   */
+  async voidLot(lotId: number, actorId: string): Promise<void> {
+    return this.db.transaction(async () => {
+      const lotRows = await this.db.query<{
+        id: number;
+        product_id: number;
+        quantity: number;
+        remaining_units: number;
+        status: string;
+      }>(
+        `SELECT id, product_id, quantity, remaining_units, status
+         FROM production_lots WHERE id = ?`,
+        [lotId]
+      );
+
+      const lot = lotRows[0];
+      if (!lot) throw new Error('Lote no encontrado.');
+      if (lot.status === 'ANULADO') throw new Error('El lote ya fue anulado.');
+      if (lot.status === 'CERRADO') {
+        throw new Error(
+          'No se puede anular un lote completamente vendido. ' +
+          'Si hay diferencias de inventario usa un ajuste de inventario.'
+        );
+      }
+
+      // Restaurar stock solo para las unidades que no se vendieron.
+      if (lot.remaining_units > 0) {
+        const requiredByMaterial = await this.explodeBomToMaterials(
+          lot.product_id,
+          lot.remaining_units
+        );
+        for (const [materialId, qty] of requiredByMaterial.entries()) {
+          await this.db.execute(
+            `UPDATE materials SET stock = stock + ? WHERE id = ?`,
+            [qty, materialId]
+          );
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      await this.db.execute(
+        `UPDATE production_lots
+         SET status = 'ANULADO', closed_at = ?, closed_reason = 'ANULADO_MANUAL'
+         WHERE id = ?`,
+        [nowIso, lotId]
+      );
+
+      const soldUnits = lot.quantity - lot.remaining_units;
+      await this.db.execute(
+        `INSERT INTO lot_audit_log
+           (lot_id, event_type, old_value, new_value, actor_id, notes)
+         VALUES (?, 'LOT_VOID', ?, 'ANULADO', ?, ?)`,
+        [
+          lotId,
+          lot.status,
+          actorId,
+          `${lot.remaining_units} uds devueltas a inventario de materiales. ` +
+          `${soldUnits} uds ya vendidas no se revierten.`,
+        ]
+      );
+    });
+  }
+
+  /**
    * Formatea un número como moneda en Quetzales guatemaltecos.
    */
   formatGTQ(amount: number): string {

@@ -1,4 +1,4 @@
-import { Component, QueryList, ViewChildren } from '@angular/core';
+import { Component, OnDestroy, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -18,6 +18,7 @@ import { MaterialService } from '@services/material.service';
 import { PhotoService } from '@services/photo.service';
 import { Material } from '@models/material.model';
 import { GtqCurrencyPipe } from '@shared/pipes/gtq-currency.pipe';
+import { Subject, takeUntil } from 'rxjs';
 
 const SWIPE_HINT_KEY = 'materials_swipe_hint_shown';
 
@@ -36,8 +37,9 @@ const SWIPE_HINT_KEY = 'materials_swipe_hint_shown';
   templateUrl: './materials.page.html',
   styleUrls: ['./materials.page.scss'],
 })
-export class MaterialsPage {
+export class MaterialsPage implements OnInit, OnDestroy {
   @ViewChildren(IonItemSliding) slidingItems!: QueryList<IonItemSliding>;
+  private readonly destroy$ = new Subject<void>();
 
   materials: Material[] = [];
   filtered: Material[] = [];
@@ -52,6 +54,19 @@ export class MaterialsPage {
     private toastCtrl: ToastController
   ) {
     addIcons({ addOutline, createOutline, trashOutline, cubeOutline, chevronBackOutline });
+  }
+
+  ngOnInit(): void {
+    this.materialService.materialsChanged$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        void this.load();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   async ionViewWillEnter(): Promise<void> {
@@ -89,12 +104,31 @@ export class MaterialsPage {
   private async load(showHint = false): Promise<void> {
     this.loading = true;
     try {
+      const previousById = new Map(this.materials.map(m => [m.id, m]));
       this.materials = await this.materialService.getAll();
+      this.invalidatePhotoCache(previousById, this.materials);
       this.applyFilter();
       await this.loadPhotos();
     } finally {
       this.loading = false;
       if (showHint) this.showSwipeHintIfNeeded();
+    }
+  }
+
+  private invalidatePhotoCache(previousById: Map<number, Material>, current: Material[]): void {
+    const currentIds = new Set(current.map(m => m.id));
+
+    for (const id of this.photoCache.keys()) {
+      if (!currentIds.has(id)) {
+        this.photoCache.delete(id);
+      }
+    }
+
+    for (const material of current) {
+      const previous = previousById.get(material.id);
+      if (previous && previous.photoPath !== material.photoPath) {
+        this.photoCache.delete(material.id);
+      }
     }
   }
 

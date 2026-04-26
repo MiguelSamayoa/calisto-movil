@@ -9,14 +9,13 @@
 
 <ion-content class="ion-padding">
 
-  <!-- ─── Producto ───────────────────────────────────────── -->
   <ion-card>
     <ion-card-content>
       <ion-item lines="full">
         <ion-label position="stacked">Producto *</ion-label>
         <ion-select
           [(ngModel)]="selectedProductId"
-          (ngModelChange)="onProductSelected()"
+          (ngModelChange)="onFormChange()"
           placeholder="¿Qué se vendió?"
           interface="action-sheet"
         >
@@ -26,41 +25,11 @@
         </ion-select>
       </ion-item>
 
-      <!-- Lote (si hay stock disponible) -->
-      <ion-item lines="full" *ngIf="availableLots.length > 0">
-        <ion-label position="stacked">Lote de producción</ion-label>
-        <ion-select
-          [(ngModel)]="selectedLotId"
-          (ngModelChange)="onLotSelected()"
-          interface="action-sheet"
-        >
-          <ion-select-option *ngFor="let lot of availableLots" [value]="lot.id">
-            #{{ lot.id }} — {{ lot.remainingUnits }} disponibles
-            ({{ lot.sellingPrice | gtq }}/u.)
-          </ion-select-option>
-        </ion-select>
-        <ion-note slot="helper">
-          Selecciona el lote para llevar control de inventario
-        </ion-note>
-      </ion-item>
-
-      <!-- Info del lote seleccionado -->
-      <div *ngIf="selectedLot" class="lot-info">
-        <ion-chip color="success">
-          <ion-icon name="layers-outline"></ion-icon>
-          {{ selectedLot.remainingUnits }} unidades disponibles
-        </ion-chip>
-      </div>
-    </ion-card-content>
-  </ion-card>
-
-  <!-- ─── Cantidad y precio ──────────────────────────────── -->
-  <ion-card>
-    <ion-card-content>
-      <ion-item lines="full">
+      <ion-item lines="none">
         <ion-label position="stacked">Cantidad vendida *</ion-label>
         <ion-input
           [(ngModel)]="quantity"
+          (ngModelChange)="onFormChange()"
           type="number"
           inputmode="numeric"
           placeholder="1"
@@ -69,32 +38,68 @@
           [autofocus]="!!selectedProductId"
         ></ion-input>
       </ion-item>
-
-      <ion-item lines="none">
-        <ion-label position="stacked">Precio por unidad (Q) *</ion-label>
-        <ion-input
-          [(ngModel)]="unitPrice"
-          type="number"
-          inputmode="decimal"
-          placeholder="0.00"
-          min="0"
-          step="0.01"
-        ></ion-input>
-      </ion-item>
     </ion-card-content>
   </ion-card>
 
-  <!-- ─── Total calculado ────────────────────────────────── -->
-  <ion-card *ngIf="quantity && unitPrice" class="total-card">
+  <ion-card *ngIf="previewing" class="preview-card">
+    <ion-card-content class="preview-loading">
+      <ion-spinner name="crescent"></ion-spinner>
+      <span>Calculando disponibilidad FIFO...</span>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card *ngIf="previewError && !previewing" color="warning" class="warning-card">
     <ion-card-content>
-      <div class="total-row">
-        <span>{{ quantity }} × {{ unitPrice | gtq }}</span>
-        <strong class="total-amount">= {{ totalAmount | gtq }}</strong>
+      <strong>No hay stock disponible:</strong>
+      <div>{{ previewError }}</div>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card *ngIf="preview && !previewing" class="preview-card">
+    <ion-card-content>
+      <div class="preview-summary">
+
+        <div class="preview-row">
+          <span>Stock disponible: </span>
+          <strong>{{ preview.availableQuantity }}</strong>
+        </div>
+        <div class="preview-row">
+          <span>Lotes involucrados: </span>
+          <strong>{{ preview.lotsUsed }}</strong>
+        </div>
+        <div class="preview-row divider">
+          <span>Precio por unidad aplicado: </span>
+          <strong class="price-highlight">{{ preview.unitPrice | gtq }}</strong>
+        </div>
+        <div class="preview-row">
+          <span>Total de la venta: </span>
+          <strong>{{ preview.totalAmount | gtq }}</strong>
+        </div>
       </div>
     </ion-card-content>
   </ion-card>
 
-  <!-- ─── Notas ──────────────────────────────────────────── -->
+  <ion-card *ngIf="preview && preview.allocations.length > 0 && !previewing">
+    <ion-card-content>
+      <ion-list lines="full">
+        <ion-item *ngFor="let allocation of preview.allocations">
+          <ion-label>
+            <h3>Lote #{{ allocation.lotId }}</h3>
+            <p>
+              {{ allocation.quantity }} uds ·
+              Disponible antes: {{ allocation.remainingBefore }} ·
+              Después: {{ allocation.remainingAfter }}
+            </p>
+            <p>
+              Precio lote: {{ allocation.sellingPrice | gtq }} ·
+              Costo/u: {{ allocation.costPerUnit | gtq }}
+            </p>
+          </ion-label>
+        </ion-item>
+      </ion-list>
+    </ion-card-content>
+  </ion-card>
+
   <ion-card>
     <ion-card-content>
       <ion-item lines="none">
@@ -109,16 +114,15 @@
     </ion-card-content>
   </ion-card>
 
-  <!-- ─── Botón confirmar ────────────────────────────────── -->
   <ion-button
     expand="block"
     color="success"
     (click)="save()"
-    [disabled]="saving || !selectedProductId || !quantity || !unitPrice"
+    [disabled]="saving || !selectedProductId || !quantity || previewing || !preview || !!previewError"
     class="save-btn"
   >
     <ion-icon slot="start" name="checkmark-outline"></ion-icon>
-    Registrar venta — {{ totalAmount | gtq }}
+    Registrar venta
   </ion-button>
 
 </ion-content>

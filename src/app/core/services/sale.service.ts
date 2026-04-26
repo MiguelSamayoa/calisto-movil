@@ -1,20 +1,29 @@
 import { Injectable } from '@angular/core';
+import { Observable, Subject } from 'rxjs';
 import { SaleRepository } from '@repos/sale.repository';
-import { ProductionLotRepository } from '@repos/production-lot.repository';
+import { OperatorService } from '@services/operator.service';
 import {
   Sale,
   CreateSaleDto,
   SaleWithProduct,
   DashboardStats,
   MonthlySummary,
+  SalePreview,
 } from '@models/sale.model';
 
 @Injectable({ providedIn: 'root' })
 export class SaleService {
+  private readonly salesChangedSubject = new Subject<void>();
+  readonly salesChanged$: Observable<void> = this.salesChangedSubject.asObservable();
+
   constructor(
     private repo: SaleRepository,
-    private lotRepo: ProductionLotRepository
+    private operatorService: OperatorService,
   ) {}
+
+  private notifySalesChanged(): void {
+    this.salesChangedSubject.next();
+  }
 
   getAll(limit = 50, offset = 0): Promise<SaleWithProduct[]> {
     return this.repo.findAll(limit, offset);
@@ -36,25 +45,26 @@ export class SaleService {
     return this.repo.getMonthlySummary(year, month);
   }
 
-  async registerSale(dto: CreateSaleDto): Promise<Sale> {
-    if (dto.quantity <= 0) throw new Error('La cantidad debe ser mayor a 0.');
-    if (dto.unitPrice < 0) throw new Error('El precio no puede ser negativo.');
-
-    // Validar que haya stock en el lote si se especificó
-    if (dto.lotId) {
-      const lot = await this.lotRepo.findById(dto.lotId);
-      if (!lot) throw new Error('Lote no encontrado.');
-      if (lot.remainingUnits < dto.quantity) {
-        throw new Error(
-          `Stock insuficiente en lote. Disponibles: ${lot.remainingUnits} unidades.`
-        );
-      }
-    }
-
-    return this.repo.create(dto);
+  previewSale(productId: number, quantity: number): Promise<SalePreview> {
+    return this.repo.previewFifoSale(productId, quantity);
   }
 
-  async deleteSale(id: number): Promise<void> {
-    return this.repo.delete(id);
+  async registerSale(dto: CreateSaleDto): Promise<Sale> {
+    if (dto.quantity <= 0) throw new Error('La cantidad debe ser mayor a 0.');
+    if (dto.unitPrice !== undefined && dto.unitPrice < 0) {
+      throw new Error('El precio no puede ser negativo.');
+    }
+
+    const enriched: CreateSaleDto = {
+      ...dto,
+      createdBy: dto.createdBy ?? await this.operatorService.getName(),
+    };
+    const sale = await this.repo.create(enriched);
+    this.notifySalesChanged();
+    return sale;
+  }
+
+  async deleteSale(_id: number): Promise<void> {
+    throw new Error('La eliminación de ventas está deshabilitada.');
   }
 }

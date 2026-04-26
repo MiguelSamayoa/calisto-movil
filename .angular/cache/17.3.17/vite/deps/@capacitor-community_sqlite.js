@@ -1,9 +1,9 @@
 import {
   registerPlugin
-} from "./chunk-M7HQUZV4.js";
+} from "./chunk-V5WJEF5Y.js";
 import {
   __async
-} from "./chunk-WDMUDEB6.js";
+} from "./chunk-SCNEKAWF.js";
 
 // node_modules/@capacitor-community/sqlite/dist/esm/definitions.js
 var SQLiteConnection = class {
@@ -958,7 +958,7 @@ var SQLiteDBConnection = class {
 
 // node_modules/@capacitor-community/sqlite/dist/esm/index.js
 var CapacitorSQLite = registerPlugin("CapacitorSQLite", {
-  web: () => import("./web-U2Z2G6M5.js").then((m) => new m.CapacitorSQLiteWeb()),
+  web: () => import("./web-3XZPRVQ4.js").then((m) => new m.CapacitorSQLiteWeb()),
   electron: () => window.CapacitorCustomPlatform.plugins.CapacitorSQLite
 });
 export {
